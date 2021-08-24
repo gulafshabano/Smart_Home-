@@ -1,0 +1,549 @@
+#include <LiquidCrystal.h>
+
+const int SpmpSensorPin = A0; // set A0 as the Spump water sensor pin
+
+int SpmpsensorValue = 0;  // variable to store the value coming from the sensor
+
+const int rs = 12, en = 11, d4 = 5, d5 = 4, d6 = 3, d7 = 2;// define the Arduino pins used to connect with the LCD pins RS, EN, D4 to D7
+
+LiquidCrystal lcd(rs, en, d4, d5, d6, d7);//initialize the library by associating any needed LCD interface pinwith the arduino pin number it is connected to
+
+#define EXTRELAYPIN 13 // Arduino pin tied to vin pin of the External Relay Circuit
+
+#define RELAYPIN 8 // Arduino pin tied to Relaypin of the Relay Circuit
+
+#define BUZZER 9 // Arduino pin tied to +ve terminal of the Buzzer
+
+#include <EEPROM.h>
+
+int flag = 0;
+
+int flag1 = 1;
+
+const int level_25 = A1, level_50 = A2, level_75 = A3, level_100 = A4;
+
+String percentage = "<0" ;
+
+int resist = 100;
+
+int k=1,z=1;
+
+byte Level0[8] = {
+
+  0b00000,
+
+  0b00000,
+
+  0b00000,
+
+  0b00000,
+
+  0b00000,
+
+  0b00000,
+
+  0b11111,
+
+  0b11111
+
+};
+
+byte Level1[8] = {
+
+  0b00000,
+
+  0b00000,
+
+  0b00000,
+
+  0b00000,
+
+  0b11111,
+
+  0b11111,
+
+  0b11111,
+
+  0b11111
+
+};
+
+byte Level2[8] = {
+
+  0b00000,
+
+  0b00000,
+
+  0b11111,
+
+  0b11111,
+
+  0b11111,
+
+  0b11111,
+
+  0b11111,
+
+  0b11111
+
+};
+
+byte Level3[8] = {
+
+  0b11111,
+
+  0b11111,
+
+  0b11111,
+
+  0b11111,
+
+  0b11111,
+
+  0b11111,
+
+  0b11111,
+
+  0b11111
+
+};
+
+byte NoLevel[8] = {
+
+  0b00000,
+
+  0b00000,
+
+  0b00000,
+
+  0b00000,
+
+  0b00000,
+
+  0b00000,
+
+  0b00000,
+
+  0b00000
+
+};
+
+byte tank[8] = {
+
+  0b10001,
+
+  0b10001,
+
+  0b10001,
+
+  0b11111,
+
+  0b11111,
+
+  0b11111,
+
+  0b11111,
+
+  0b00000
+
+};
+
+
+
+byte arrow[8] = {
+
+  0b00000,
+
+  0b00100,
+
+  0b00110,
+
+  0b11111,
+
+  0b11111,
+
+  0b00110,
+
+  0b00100,
+
+  0b00000
+
+};
+
+void setup() {
+
+  Serial.begin(9600);
+
+  lcd.createChar(0, Level0);
+
+  lcd.createChar(1, Level1);
+
+  lcd.createChar(2, Level2);
+
+  lcd.createChar(3, Level3);
+
+  lcd.createChar(4, NoLevel);
+
+  lcd.createChar(5, tank);
+
+  lcd.createChar(6, arrow);
+
+  lcd.begin(16, 2); // set up the LCD's number of columns and rows:
+
+  pinMode(RELAYPIN, OUTPUT); // Relay pin as output pin
+
+  pinMode(EXTRELAYPIN, OUTPUT); // Relay pin as output pin
+
+  digitalWrite(RELAYPIN, LOW); //Turn off the relay
+
+  digitalWrite(EXTRELAYPIN, HIGH); //Turn off the relay
+
+  pinMode(BUZZER, OUTPUT); // Buzzer pin as output pin
+
+  digitalWrite(BUZZER, LOW); //Turn off the Buzzer
+
+  pinMode(level_25, INPUT); // Buzzer pin as output pin
+
+  pinMode(level_50, INPUT); // Buzzer pin as output pin
+
+  pinMode(level_75, INPUT); // Buzzer pin as output pin
+
+  pinMode(level_100, INPUT); // Buzzer pin as output pin
+
+  lcd.print("Automatic  Water");
+
+  lcd.setCursor(0, 1);
+
+  lcd.print("*Pumping System*");
+
+  delay(1000);
+
+  delay(5000);
+
+  lcd.clear();
+
+  digitalWrite(BUZZER, HIGH);
+
+  delay(250);
+
+  digitalWrite(BUZZER, LOW);
+
+}
+
+
+
+void loop() {
+
+  while (1) {
+
+    Serial.println(analogRead(SpmpSensorPin));
+
+    if (analogRead(SpmpSensorPin) <= 100 && flag == 0) {
+
+      lcd.clear();
+
+      lcd.setCursor(0, 0);
+
+      lcd.print("*SumTank Empty*");
+
+      lcd.setCursor(0, 1);
+
+      digitalWrite(RELAYPIN, LOW);
+
+      digitalWrite(EXTRELAYPIN, HIGH);
+
+      lcd.print("*Pump kept OFF*");
+
+      digitalWrite(BUZZER, HIGH);
+
+      delay(1000);
+
+      digitalWrite(BUZZER, LOW);
+
+      delay(2000);
+
+      lcd.clear();
+
+      lcd.setCursor(0, 1);
+
+      lcd.print("LOW");
+
+      lcd.setCursor(12, 1);
+
+      lcd.print("HIGH");
+
+      water_level();
+
+      delay(2000);
+
+      lcd.clear();
+
+    } else if (analogRead(SpmpSensorPin) > 100) {
+
+      Serial.println(flag);
+
+      lcd.setCursor(0, 1);
+
+      lcd.print("LOW");
+
+      lcd.setCursor(12, 1);
+
+      lcd.print("HIGH");
+
+      water_level();
+
+      if (flag == 0) {    
+
+        lcd.setCursor(0, 0);
+
+        lcd.print("PMP ON  ");
+
+        digitalWrite(RELAYPIN, HIGH);
+
+        digitalWrite(EXTRELAYPIN, LOW);
+
+        k++;
+
+        if(k>=200){
+
+          k=1;
+
+          delay(10);
+
+          digitalWrite(BUZZER, HIGH);
+
+          delay(10);
+
+          digitalWrite(BUZZER, LOW);
+
+        }
+
+      } else if (flag == 1) {
+
+        delay(1000);
+
+        digitalWrite(RELAYPIN, LOW);
+
+        digitalWrite(EXTRELAYPIN, HIGH);
+
+        lcd.setCursor(0, 0);
+
+        lcd.print("PMP OFF ");
+
+        lcd.setCursor(12, 0);
+
+        lcd.print(percentage + "% ");
+
+        if(z==1){
+
+          z=0;
+
+          digitalWrite(BUZZER, HIGH);
+
+          delay(250);
+
+          digitalWrite(BUZZER, LOW);
+
+          delay(250);
+
+          digitalWrite(BUZZER, HIGH);
+
+          delay(250);
+
+          digitalWrite(BUZZER, LOW);
+
+          delay(250);
+
+          digitalWrite(BUZZER, HIGH);
+
+          delay(250);
+
+          digitalWrite(BUZZER, LOW);
+
+        }
+
+      }
+
+    }
+
+  }
+
+}
+
+
+
+void water_level() {
+
+  int a = analogRead(level_100);
+
+  int b = analogRead(level_75);
+
+  int c = analogRead(level_50);
+
+  int d = analogRead(level_25);
+
+  Serial.println();
+
+  if (a > resist) {
+
+    lcd.setCursor(9, 1);
+
+    lcd.write(byte(3));
+
+    lcd.setCursor(10, 1);
+
+    lcd.write(byte(3));
+
+    int i;  
+
+        flag = 1;
+
+    percentage = "100";
+
+  } else {
+
+    lcd.setCursor(9, 1);
+
+    lcd.write(byte(4));
+
+    lcd.setCursor(10, 1);
+
+    lcd.write(byte(4));
+
+    percentage = "75";
+
+  }
+
+  if (b > resist) {
+
+    flag1 = 2;
+
+    lcd.setCursor(7, 1);
+
+    lcd.write(byte(2));
+
+    lcd.setCursor(8, 1);
+
+    lcd.write(byte(2));
+
+  } else {
+
+    lcd.setCursor(7, 1);
+
+    lcd.write(byte(4));
+
+    lcd.setCursor(8, 1);
+
+    lcd.write(byte(4));
+
+    percentage = "50";
+
+  }
+
+  if (c > resist)
+
+  {
+
+    lcd.setCursor(5, 1);
+
+    lcd.write(byte(1));
+
+    lcd.setCursor(6, 1);
+
+    lcd.write(byte(1));
+
+    flag1 = 2;
+
+  } else {
+
+    lcd.setCursor(5, 1);
+
+    lcd.write(byte(4));
+
+    lcd.setCursor(6, 1);
+
+    lcd.write(byte(4));
+
+    percentage = "25";
+
+      flag = 0;
+
+      z=1;
+
+  }
+
+  if (d > resist)
+
+  {
+
+    lcd.setCursor(3, 1);
+
+    lcd.write(byte(0));
+
+    lcd.setCursor(4, 1);
+
+    lcd.write(byte(0));
+
+  } else {
+
+    lcd.setCursor(3, 1);
+
+    lcd.write(byte(0));
+
+    lcd.setCursor(4, 1);
+
+    lcd.write(byte(0));
+
+    int i;
+
+        flag = 0;
+
+        z=1;
+
+    delay(250);
+
+    k=k+82;
+
+    percentage = "EMTY";
+
+    lcd.setCursor(3, 1);
+
+    lcd.write(byte(4));
+
+    lcd.setCursor(4, 1);
+
+    lcd.write(byte(4));
+
+    delay(250);
+
+    digitalWrite(BUZZER, HIGH);
+
+    delay(10);
+
+    digitalWrite(BUZZER, LOW);
+
+  }
+
+  lcd.setCursor(10, 0);
+
+  lcd.write(byte(5));
+
+  lcd.setCursor(11, 0);
+
+  lcd.write(byte(6));
+
+  lcd.setCursor(12, 0);
+
+  lcd.write(byte(4));
+
+  lcd.write(byte(4));
+
+  lcd.write(byte(4));
+
+  lcd.write(byte(4));
+
+  lcd.setCursor(12, 0);
+
+  lcd.print(percentage + "%");
+
+}
