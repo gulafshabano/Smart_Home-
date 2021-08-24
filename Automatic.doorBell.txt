@@ -1,0 +1,20 @@
+void loop() 
+{
+  digitalWrite(trig, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trig, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trig, LOW);
+  t = pulseIn(echo, HIGH);
+  d = t * 0.0340 / 2;
+  d = t * 0.01330 / 2;
+  if(d<=70)
+  {
+	digitalWrite(8,HIGH);
+  }
+  else
+  {
+	digitalWrite(8,LOW);
+  }
+  delay(1000);
+}
